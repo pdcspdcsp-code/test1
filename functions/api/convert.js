@@ -26,8 +26,9 @@ export async function onRequestPost(context) {
       });
     }
 
-    if (!env.ANTHROPIC_API_KEY) {
-      return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' }), {
+    const apiKey = env.ANTHROPIC_API_KEY || env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'API 키가 설정되지 않았습니다.' }), {
         status: 500,
         headers: corsHeaders,
       });
@@ -40,7 +41,7 @@ export async function onRequestPost(context) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'x-api-key': env.ANTHROPIC_API_KEY,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
