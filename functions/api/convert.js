@@ -1,5 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
-
 function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let binary = '';
@@ -28,7 +26,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    if (!env.ANTHROPIC_API_KEY) {
+    if (!env.GEMINI_API_KEY) {
       return new Response(JSON.stringify({ error: 'API 키가 설정되지 않았습니다.' }), {
         status: 500,
         headers: corsHeaders,
@@ -37,23 +35,21 @@ export async function onRequestPost(context) {
 
     const arrayBuffer = await file.arrayBuffer();
     const base64 = arrayBufferToBase64(arrayBuffer);
-    const mediaType = file.type || 'image/jpeg';
+    const mimeType = file.type || 'image/jpeg';
 
-    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-
-    const response = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 16000,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: base64 },
-          },
-          {
-            type: 'text',
-            text: `You are an expert Optical Music Recognition (OMR) system. Analyze this sheet music image and convert it to valid MusicXML 4.0 format.
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                inline_data: { mime_type: mimeType, data: base64 },
+              },
+              {
+                text: `You are an expert Optical Music Recognition (OMR) system. Analyze this sheet music image and convert it to valid MusicXML 4.0 format.
 
 Follow these steps carefully:
 1. Identify: clef (treble/bass/alto/tenor), key signature (sharps/flats count), time signature (e.g. 4/4, 3/4)
@@ -67,27 +63,33 @@ Generate complete, valid MusicXML. The XML must be well-formed and playable.
 
 CRITICAL: Output ONLY the raw MusicXML starting with <?xml version="1.0" encoding="UTF-8"?>
 Do NOT wrap in markdown code blocks. Do NOT add any explanation before or after.`,
+              },
+            ],
+          }],
+          generationConfig: {
+            maxOutputTokens: 8192,
+            temperature: 0.1,
           },
-        ],
-      }],
-    });
+        }),
+      }
+    );
 
-    const textBlock = response.content.find(b => b.type === 'text');
-    if (!textBlock) {
-      return new Response(JSON.stringify({ error: '악보 변환에 실패했습니다.' }), {
-        status: 500,
-        headers: corsHeaders,
-      });
+    const data = await geminiRes.json();
+
+    if (!geminiRes.ok) {
+      throw new Error(data.error?.message || 'Gemini API 오류');
     }
 
-    let musicXml = textBlock.text.trim();
+    let musicXml = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!musicXml) {
+      throw new Error('악보 변환에 실패했습니다.');
+    }
+
     musicXml = musicXml.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
 
     if (!musicXml.startsWith('<?xml')) {
-      return new Response(JSON.stringify({ error: '유효하지 않은 MusicXML이 생성되었습니다.' }), {
-        status: 500,
-        headers: corsHeaders,
-      });
+      throw new Error('유효하지 않은 MusicXML이 생성되었습니다.');
     }
 
     return new Response(JSON.stringify({ musicXml }), { headers: corsHeaders });
