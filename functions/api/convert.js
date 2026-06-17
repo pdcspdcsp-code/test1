@@ -46,8 +46,8 @@ export async function onRequestPost(context) {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 8192,
+        model: 'claude-opus-4-8',
+        max_tokens: 16000,
         messages: [{
           role: 'user',
           content: [
@@ -57,19 +57,32 @@ export async function onRequestPost(context) {
             },
             {
               type: 'text',
-              text: `You are an expert Optical Music Recognition (OMR) system. Analyze this sheet music image and convert it to valid MusicXML 4.0 format.
+              text: `You are a professional music engraver and OMR (Optical Music Recognition) expert. Carefully analyze this sheet music image and generate valid, error-free MusicXML 4.0.
 
-Follow these steps carefully:
-1. Identify: clef (treble/bass/alto/tenor), key signature (sharps/flats), time signature (e.g. 4/4, 3/4)
-2. Read every note: pitch (C4, D5, etc.), duration (whole/half/quarter/eighth/sixteenth), accidentals, dots
-3. Read every rest and its duration
-4. Count measures carefully — do not add or skip any barlines
-5. Note ties, slurs, dynamics (pp p mp mf f ff), tempo markings, articulations
+STEP 1 — READ THE SCORE:
+- Clef: identify treble/bass/alto/tenor for each staff
+- Key signature: count sharps or flats exactly
+- Time signature: read numerator and denominator (e.g. 4/4, 3/4, 6/8)
+- Pickup measure (anacrusis): if the first measure is incomplete, mark it with implicit="yes" and include only the beats present
+- Count every barline to determine exact measure count
+- For each note: step (C D E F G A B), octave (use 2–6 range), duration type, dots, accidentals, ties
+- For each rest: duration type and dots
+- Verify each measure's total duration equals the time signature before proceeding
 
-Generate complete, valid MusicXML. The XML must be well-formed and playable.
+STEP 2 — MUSICXML RULES:
+- Use <divisions>4</divisions> (quarter note = 4 divisions)
+- Duration values: whole=16, half=8, quarter=4, eighth=2, 16th=1, dotted quarter=6, dotted half=12, dotted eighth=3
+- Every <note> must have: <pitch> (or <rest/>), <duration>, <type>
+- Pickup measure: <measure number="0" implicit="yes">
+- Each measure's note durations must sum exactly to (divisions × beats-per-measure)
+- Valid octaves: 2 through 6 for most instruments (never 0 or 1 for treble clef)
+- Ties: add <tie type="start"/> and <notations><tied type="start"/></notations> on first note, <tie type="stop"/> on second
 
-CRITICAL: Output ONLY the raw MusicXML starting with <?xml version="1.0" encoding="UTF-8"?>
-Do NOT wrap in markdown code blocks. Do NOT add any explanation before or after.`,
+STEP 3 — OUTPUT:
+Return ONLY the raw MusicXML. No markdown. No explanation. Start with:
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="4.0">`,
             },
           ],
         }],
