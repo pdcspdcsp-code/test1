@@ -1,12 +1,3 @@
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -26,74 +17,42 @@ export async function onRequestPost(context) {
       });
     }
 
-    if (!env.OPENROUTER_API_KEY) {
-      return new Response(JSON.stringify({ error: 'API 키가 설정되지 않았습니다.' }), {
+    if (!env.AI) {
+      return new Response(JSON.stringify({ error: 'AI 바인딩이 설정되지 않았습니다. wrangler.toml에 [ai] 설정이 필요합니다.' }), {
         status: 500,
         headers: corsHeaders,
       });
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const base64 = arrayBufferToBase64(arrayBuffer);
-    const mimeType = file.type || 'image/jpeg';
+    const uint8Array = new Uint8Array(arrayBuffer);
 
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://test1-4w0.pages.dev',
-      },
-      body: JSON.stringify({
-        model: 'google/gemma-4-26b-a4b-it:free',
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: `data:${mimeType};base64,${base64}` },
-            },
-            {
-              type: 'text',
-              text: `You are an expert Optical Music Recognition (OMR) system. Analyze this sheet music image and convert it to valid MusicXML 4.0 format.
+    const prompt = `You are an expert Optical Music Recognition (OMR) system. Analyze this sheet music image and convert it to valid MusicXML 4.0 format.
 
-Follow these steps carefully:
-1. Identify: clef (treble/bass/alto/tenor), key signature (sharps/flats count), time signature (e.g. 4/4, 3/4)
+Follow these steps:
+1. Identify clef, key signature, and time signature
 2. Read every note: pitch (C4, D5, etc.), duration (whole/half/quarter/eighth/sixteenth), accidentals, dots
 3. Read every rest and its duration
-4. Identify barlines and group notes into correct measures
-5. Note ties, slurs, dynamics (pp p mp mf f ff), tempo markings, articulations (staccato, accent, etc.)
-6. For multiple staves (piano grand staff etc.), handle each part correctly
+4. Identify barlines and group notes into measures
+5. Note dynamics, articulations, ties, slurs if visible
 
-Generate complete, valid MusicXML. The XML must be well-formed and playable.
+Output ONLY raw MusicXML starting with <?xml version="1.0" encoding="UTF-8"?>
+Do NOT use markdown code blocks. No explanation before or after.`;
 
-CRITICAL: Output ONLY the raw MusicXML starting with <?xml version="1.0" encoding="UTF-8"?>
-Do NOT wrap in markdown code blocks. Do NOT add any explanation before or after.`,
-            },
-          ],
-        }],
-        max_tokens: 8192,
-        temperature: 0.1,
-      }),
+    const response = await env.AI.run('@cf/llava-1.5-7b-hf', {
+      image: [...uint8Array],
+      prompt,
+      max_tokens: 4096,
     });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      const detail = JSON.stringify(data.error || data);
-      throw new Error(`OpenRouter 오류: ${detail}`);
-    }
-
-    let musicXml = data.choices?.[0]?.message?.content?.trim();
-
-    if (!musicXml) {
-      throw new Error('악보 변환에 실패했습니다.');
-    }
-
+    let musicXml = (response.description || response.response || '').trim();
     musicXml = musicXml.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
 
     if (!musicXml.startsWith('<?xml')) {
-      throw new Error('유효하지 않은 MusicXML이 생성되었습니다.');
+      return new Response(JSON.stringify({
+        error: '유효하지 않은 MusicXML이 생성되었습니다.',
+        raw: musicXml.slice(0, 500),
+      }), { status: 500, headers: corsHeaders });
     }
 
     return new Response(JSON.stringify({ musicXml }), { headers: corsHeaders });
