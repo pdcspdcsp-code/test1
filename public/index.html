@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ScoreAI - 악보 이미지를 디지털 악보로</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.6/build/opensheetmusicdisplay.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">𝄞</span>
+        <span class="logo-text">ScoreAI</span>
+      </div>
+      <p class="tagline">악보 사진을 디지털 악보로 변환</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Upload Section -->
+    <section id="uploadSection" class="section">
+      <div
+        class="drop-zone"
+        id="dropZone"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        ondrop="handleDrop(event)"
+      >
+        <div class="drop-content">
+          <div class="drop-icon">🎼</div>
+          <h2>악보 사진을 업로드하세요</h2>
+          <p class="drop-desc">드래그 앤 드롭 또는 클릭하여 파일 선택</p>
+          <p class="drop-formats">JPG · PNG · WEBP · GIF</p>
+          <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+            파일 선택
+          </button>
+          <input type="file" id="fileInput" accept="image/*" hidden onchange="handleFileSelect(event)">
+        </div>
+      </div>
+    </section>
+
+    <!-- Preview Section -->
+    <section id="previewSection" class="section hidden">
+      <div class="two-col">
+        <div class="col">
+          <h3 class="col-title">원본 이미지</h3>
+          <div class="image-preview-box">
+            <img id="previewImg" src="" alt="업로드된 악보">
+          </div>
+          <p id="fileName" class="file-name"></p>
+        </div>
+        <div class="col center-col">
+          <div class="arrow-area">
+            <div class="arrow">→</div>
+            <button id="convertBtn" class="btn btn-convert" onclick="convertScore()">
+              <span class="btn-icon">✨</span>
+              악보로 변환
+            </button>
+            <button class="btn btn-ghost" onclick="resetUI()">다른 파일 선택</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loading Section -->
+    <section id="loadingSection" class="section hidden">
+      <div class="loading-box">
+        <div class="music-notes-animation">
+          <span>♩</span><span>♪</span><span>♫</span><span>♬</span>
+        </div>
+        <h2>AI가 악보를 분석하고 있습니다</h2>
+        <p class="loading-desc">이미지에서 음표, 박자, 조성을 인식 중...</p>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Result Section -->
+    <section id="resultSection" class="section hidden">
+      <div class="result-header">
+        <div class="result-title-area">
+          <h2>✅ 변환 완료</h2>
+        </div>
+        <div class="result-actions">
+          <button class="btn btn-download" onclick="downloadXml()">
+            📥 MusicXML 다운로드
+          </button>
+          <button class="btn btn-ghost" onclick="resetUI()">
+            🔄 새 악보 변환
+          </button>
+        </div>
+      </div>
+      <div class="score-wrapper">
+        <div id="scoreContainer"></div>
+      </div>
+      <details class="xml-details">
+        <summary>MusicXML 소스 보기</summary>
+        <pre id="xmlPreview"></pre>
+      </details>
+    </section>
+
+    <!-- Error Section -->
+    <section id="errorSection" class="section hidden">
+      <div class="error-box">
+        <div class="error-icon">⚠️</div>
+        <h3>변환에 실패했습니다</h3>
+        <p id="errorMsg"></p>
+        <button class="btn btn-primary" onclick="resetUI()">다시 시도</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Powered by Claude Opus 4.8 Vision · <a href="https://opensheetmusicdisplay.org/" target="_blank">OpenSheetMusicDisplay</a></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
