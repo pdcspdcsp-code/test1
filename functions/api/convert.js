@@ -45,7 +45,7 @@ export async function onRequestPost(context) {
         'HTTP-Referer': 'https://test1-4w0.pages.dev',
       },
       body: JSON.stringify({
-        model: 'google/gemma-4-31b-it:free',
+        model: 'google/gemma-4-31b-it:free', // v2
         messages: [{
           role: 'user',
           content: [
@@ -80,7 +80,7 @@ Do NOT wrap in markdown code blocks. Do NOT add any explanation before or after.
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.error?.message || 'OpenRouter API 오류');
+      throw new Error(`[gemma-4-31b] ${data.error?.message || 'OpenRouter API 오류'}`);
     }
 
     let musicXml = data.choices?.[0]?.message?.content?.trim();
