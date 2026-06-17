@@ -66,11 +66,17 @@ async function convertScore() {
     }
 
     currentXml = data.musicXml;
-    await renderScore(currentXml);
     document.getElementById('xmlPreview').textContent = currentXml;
 
     hide('loadingSection');
     show('resultSection');
+
+    try {
+      await renderScore(currentXml);
+    } catch (renderErr) {
+      document.getElementById('scoreContainer').innerHTML =
+        '<p style="color:#f88;padding:16px">악보 미리보기를 표시할 수 없습니다. MusicXML 파일을 다운로드해서 MuseScore에서 열어보세요.</p>';
+    }
   } catch (err) {
     hide('loadingSection');
     document.getElementById('errorMsg').textContent = err.message;
