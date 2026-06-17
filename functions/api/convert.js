@@ -45,7 +45,7 @@ export async function onRequestPost(context) {
         'HTTP-Referer': 'https://test1-4w0.pages.dev',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free',
+        model: 'google/gemma-4-31b-it:free',
         messages: [{
           role: 'user',
           content: [
