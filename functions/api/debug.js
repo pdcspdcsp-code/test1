@@ -10,6 +10,8 @@ export async function onRequestGet(context) {
     envKeys: keys,
     hasGeminiKey,
     keyPreview,
+    deployedCommit: env.CF_PAGES_COMMIT_SHA,
+    model: 'google/gemma-4-31b-it:free',
   }, null, 2), {
     headers: { 'Content-Type': 'application/json' },
   });
