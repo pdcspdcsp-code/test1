@@ -26,7 +26,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    if (!env.GEMINI_API_KEY) {
+    if (!env.OPENROUTER_API_KEY) {
       return new Response(JSON.stringify({ error: 'API 키가 설정되지 않았습니다.' }), {
         status: 500,
         headers: corsHeaders,
@@ -37,19 +37,25 @@ export async function onRequestPost(context) {
     const base64 = arrayBufferToBase64(arrayBuffer);
     const mimeType = file.type || 'image/jpeg';
 
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              {
-                inline_data: { mime_type: mimeType, data: base64 },
-              },
-              {
-                text: `You are an expert Optical Music Recognition (OMR) system. Analyze this sheet music image and convert it to valid MusicXML 4.0 format.
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://test1-4w0.pages.dev',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.0-flash-exp:free',
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: { url: `data:${mimeType};base64,${base64}` },
+            },
+            {
+              type: 'text',
+              text: `You are an expert Optical Music Recognition (OMR) system. Analyze this sheet music image and convert it to valid MusicXML 4.0 format.
 
 Follow these steps carefully:
 1. Identify: clef (treble/bass/alto/tenor), key signature (sharps/flats count), time signature (e.g. 4/4, 3/4)
@@ -63,24 +69,21 @@ Generate complete, valid MusicXML. The XML must be well-formed and playable.
 
 CRITICAL: Output ONLY the raw MusicXML starting with <?xml version="1.0" encoding="UTF-8"?>
 Do NOT wrap in markdown code blocks. Do NOT add any explanation before or after.`,
-              },
-            ],
-          }],
-          generationConfig: {
-            maxOutputTokens: 8192,
-            temperature: 0.1,
-          },
-        }),
-      }
-    );
+            },
+          ],
+        }],
+        max_tokens: 8192,
+        temperature: 0.1,
+      }),
+    });
 
-    const data = await geminiRes.json();
+    const data = await res.json();
 
-    if (!geminiRes.ok) {
-      throw new Error(data.error?.message || 'Gemini API 오류');
+    if (!res.ok) {
+      throw new Error(data.error?.message || 'OpenRouter API 오류');
     }
 
-    let musicXml = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    let musicXml = data.choices?.[0]?.message?.content?.trim();
 
     if (!musicXml) {
       throw new Error('악보 변환에 실패했습니다.');
