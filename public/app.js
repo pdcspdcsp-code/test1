@@ -84,29 +84,31 @@ async function convertScore() {
   }
 }
 
+// --- MusicXML Sanitizer ---
+function sanitizeMusicXml(xml) {
+  return xml
+    .replace(/<octave>0<\/octave>/g, '<octave>1</octave>')
+    .replace(/<octave>-\d+<\/octave>/g, '<octave>1</octave>')
+    .replace(/<octave>(\d{2,})<\/octave>/g, '<octave>7</octave>');
+}
+
 // --- OSMD Render ---
 async function renderScore(xml) {
   const container = document.getElementById('scoreContainer');
   container.innerHTML = '';
 
-  if (!osmd) {
-    osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
-      autoResize: true,
-      drawTitle: true,
-      drawSubtitle: true,
-      drawComposer: true,
-      drawLyricist: true,
-      drawMetronomeMarks: true,
-      drawPartNames: true,
-      drawMeasureNumbers: true,
-      stretchLastSystemLine: false,
-      backend: 'svg',
-    });
-  } else {
-    osmd.setOptions({ backend: 'svg' });
-  }
+  osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
+    autoResize: true,
+    drawTitle: true,
+    drawComposer: true,
+    drawMetronomeMarks: true,
+    drawPartNames: true,
+    drawMeasureNumbers: true,
+    stretchLastSystemLine: false,
+    backend: 'svg',
+  });
 
-  await osmd.load(xml);
+  await osmd.load(sanitizeMusicXml(xml));
   osmd.render();
 }
 
